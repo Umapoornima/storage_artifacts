@@ -1,0 +1,33 @@
+name: Download Azure Artifact and Commit to Repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Create folder for artifacts
+        run: mkdir -p downloaded_artifacts
+
+      - name: Download artifact from Azure Storage
+        run: |
+          curl -L "${{ secrets.AZURE_SAS_URL }}" -o downloaded_artifacts/artifact.zip
+
+      - name: Unzip artifact
+        run: unzip downloaded_artifacts/artifact.zip -d downloaded_artifacts/
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Commit and Push Artifacts
+        run: |
+          git add downloaded_artifacts/*
+          git commit -m "Add downloaded artifacts from Azure Blob Storage"
+          git push
