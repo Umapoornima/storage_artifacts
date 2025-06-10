@@ -29,4 +29,10 @@ jobs:
         run: |
           git add artifacts/portal-20250514-362.zip
           git diff --cached --quiet || git commit -m "Add ZIP artifact from Azure Storage"
-          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} HEAD:main
+          
+          # Remove current origin and add one with token
+          git remote remove origin
+          git remote add origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+
+          # Push to main (or your target branch)
+          git push origin HEAD:main
