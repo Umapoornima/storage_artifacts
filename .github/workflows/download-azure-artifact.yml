@@ -24,7 +24,9 @@ jobs:
           git config user.email "github-actions@github.com"
 
       - name: Commit and Push ZIP file
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           git add artifacts/portal-20250514-362.zip
           git diff --cached --quiet || git commit -m "Add ZIP artifact from Azure Storage"
-          git push
+          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} HEAD:main
