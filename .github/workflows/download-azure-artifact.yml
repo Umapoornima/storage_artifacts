@@ -1,30 +1,61 @@
-name: Upload Artifact ZIP to Repo
+name: Azure Blob to GitHub Artifact Transfer
 
 on:
   workflow_dispatch:
+    inputs:
+      blob-name:
+        description: 'Name of the blob to download'
+        required: true
+        default: 'portal-20250514-362.zip'
+
+env:
+  ARTIFACTS_DIR: artifacts
+  GITHUB_REPO: Umapoornima/storage_artifacts
+  AZURE_STORAGE_ACCOUNT: vadevbuildartifactstore
+  AZURE_STORAGE_CONTAINER: buildartifactzip
+  AZURE_STORAGE_SAS_TOKEN: 'sv=2024-11-04&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-06-12T12:52:39Z&st=2025-06-10T04:52:39Z&spr=https&sig=EAtc55%2B7GlQnDeYvxxHBl%2BzB8PaUZhY%2Fg7kN9TYSNzw%3D'
 
 jobs:
-  push-zip:
+  transfer:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout GitHub Repository
         uses: actions/checkout@v3
+        with:
+          repository: ${{ env.GITHUB_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: repo
 
-      - name: Download ZIP from Azure Blob
+      - name: Install Azure CLI
         run: |
-          mkdir -p artifacts
-          curl -L "https://vadevbuildartifactstore.blob.core.windows.net/buildartifactzip/portal-20250514-362.zip?sv=2024-11-04&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-06-12T12:52:39Z&st=2025-06-10T04:52:39Z&spr=https&sig=EAtc55%2B7GlQnDeYvxxHBl%2BzB8PaUZhY%2Fg7kN9TYSNzw%3D" -o artifacts/portal-20250514-362.zip
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az --version
 
-      - name: Commit and push ZIP file
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+      - name: Download from Azure Blob Storage
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          mkdir -p repo/${{ env.ARTIFACTS_DIR }}
+          az storage blob download \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_STORAGE_CONTAINER }} \
+            --name ${{ inputs.blob-name }} \
+            --file repo/${{ env.ARTIFACTS_DIR }}/${{ inputs.blob-name }} \
+            --sas-token "${{ env.AZURE_STORAGE_SAS_TOKEN }}" \
+            --output none
 
-          git add artifacts/portal-20250514-362.zip
-          git diff --cached --quiet || git commit -m "Add ZIP artifact from Azure Storage"
+      - name: Install Git LFS (for large files)
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
+          git lfs install
 
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
-          git push origin HEAD:main
+      - name: Commit and Push to GitHub
+        run: |
+          cd repo
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git lfs track "${{ env.ARTIFACTS_DIR }}/*.zip"
+          git add .gitattributes
+          git add ${{ env.ARTIFACTS_DIR }}/
+          git commit -m "Add artifact from Azure Storage: ${{ inputs.blob-name }}"
+          git push origin main
