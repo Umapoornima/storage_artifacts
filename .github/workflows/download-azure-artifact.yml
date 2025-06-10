@@ -1,4 +1,4 @@
-name: Download Azure Artifact and Commit to Repo
+name: Download ZIP from Azure Storage and Commit to Repo
 
 on:
   workflow_dispatch:
@@ -11,23 +11,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Create folder for artifacts
-        run: mkdir -p downloaded_artifacts
+      - name: Create folder for artifact
+        run: mkdir -p artifacts
 
-      - name: Download artifact from Azure Storage
+      - name: Download ZIP from Azure Storage
         run: |
-          curl -L "${{ secrets.AZURE_SAS_URL }}" -o downloaded_artifacts/artifact.zip
-
-      - name: Unzip artifact
-        run: unzip downloaded_artifacts/artifact.zip -d downloaded_artifacts/
+          curl -L "${{ secrets.AZURE_SAS_URL }}" -o artifacts/portal-20250514-362.zip
 
       - name: Configure Git
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Commit and Push Artifacts
+      - name: Commit and Push ZIP file
         run: |
-          git add downloaded_artifacts/*
-          git commit -m "Add downloaded artifacts from Azure Blob Storage"
+          git add artifacts/portal-20250514-362.zip
+          git diff --cached --quiet || git commit -m "Add ZIP artifact from Azure Storage"
           git push
