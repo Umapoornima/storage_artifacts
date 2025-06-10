@@ -1,41 +1,30 @@
-name: Download ZIP from Azure Storage and Commit to Repo
+name: Upload Artifact ZIP to Repo
 
 on:
   workflow_dispatch:
 
 jobs:
-  download-and-commit:
+  push-zip:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Create folder for artifact
-        run: mkdir -p artifacts
-
-      - name: Download ZIP from Azure Storage
+      - name: Download ZIP from Azure Blob
         run: |
-          curl -L "${{ secrets.AZURE_SAS_URL }}" -o artifacts/portal-20250514-362.zip
+          mkdir -p artifacts
+          curl -L "https://vadevbuildartifactstore.blob.core.windows.net/buildartifactzip/portal-20250514-362.zip?sv=2024-11-04&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-06-12T12:52:39Z&st=2025-06-10T04:52:39Z&spr=https&sig=EAtc55%2B7GlQnDeYvxxHBl%2BzB8PaUZhY%2Fg7kN9TYSNzw%3D" -o artifacts/portal-20250514-362.zip
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-      - name: Commit and Push ZIP file using PAT
+      - name: Commit and push ZIP file
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
           git add artifacts/portal-20250514-362.zip
           git diff --cached --quiet || git commit -m "Add ZIP artifact from Azure Storage"
 
-          # Force replace the remote to use your PAT
-          git remote remove origin
-          git remote add origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
-
-          # Push to the correct branch
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
           git push origin HEAD:main
